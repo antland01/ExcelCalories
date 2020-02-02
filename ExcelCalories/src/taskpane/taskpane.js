@@ -5,6 +5,9 @@
 
 /* global console, document, Excel, Office */
 
+var foodItems;
+var selectBox;
+
 
 Office.onReady(info => {
   if (info.host === Office.HostType.Excel) {
@@ -14,6 +17,21 @@ if (!Office.context.requirements.isSetSupported('ExcelApi', '1.9')) {
 }
 
 // Assign event handlers and other initialization logic.
+//
+if (localStorage.getItem("foodItems") === null) {
+  foodItems = [];
+}
+else
+{
+
+  foodItems = JSON.parse(localStorage.foodItems);
+}
+
+selectBox = document.getElementById('foodItems');
+
+refreshList();
+
+
 document.getElementById("insert-food").onclick = insertFood;
 document.getElementById("add-food").onclick = addFood;
     document.getElementById("sideload-msg").style.display = "none";
@@ -27,14 +45,32 @@ function insertFood() {
   Excel.run(function (ctx) { 
     var foodNameRange = ctx.workbook.getSelectedRange();
     var caloriesRange = foodNameRange.getColumnsAfter(1);
-    var foodItem = localStorage.getItem("foodItem"+localStorage.foodCount).split("//");
+    var foodItemIndex = selectBox.selectedIndex;
+    var foodName = "";
+    var foodCalories = "";
 
-    var foodName = foodItem[0];
-    var foodCalories = foodItem[1];
-
+    
+    foodNameRange.load("values");
+    caloriesRange.load("values");
     foodNameRange.load('address');
     caloriesRange.load('address');
-    return ctx.sync().then(function() {
+
+   return ctx.sync().then(function() {
+     // document.write(foodNameRange.values);
+  
+
+    if(foodNameRange.values=="") {
+      foodName = foodItems[foodItemIndex].foodName;
+      foodCalories = "= "+ foodItems[foodItemIndex].foodCalories;
+    }
+    else
+    {
+      foodName =  foodNameRange.values + " + "+foodItems[foodItemIndex].foodName;
+      foodCalories = "= "+caloriesRange.values + " + "+foodItems[foodItemIndex].foodCalories;
+    }
+
+
+    
       foodNameRange.values = [[ foodName ]];
       caloriesRange.values = [[ foodCalories ]];
     });
@@ -96,25 +132,31 @@ function insertFood() {
 function addFood() {
   if (typeof(Storage) !== "undefined") {
     // Code for localStorage/sessionStorage.
-    document.write(Object.keys(localStorage));
-
-    if (localStorage.foodCount) {
-      localStorage.foodCount = Number(localStorage.foodCount) + 1;
-    } else {
-      localStorage.foodCount = 1;
-    }
+   // document.write(Object.keys(localStorage));
 
     var foodName = document.getElementById("foodname").value;
     var foodCalories = document.getElementById("caloriecount").value;
+    foodItems.push({foodName:foodName, foodCalories:foodCalories});
 
-    // Store
-localStorage.setItem("foodItem"+localStorage.foodCount, foodName+"//"+foodCalories);
-// Retrieve
-document.write(localStorage.getItem("foodItem"+localStorage.foodCount));
+             // Store
+            localStorage.setItem("foodItems", JSON.stringify(foodItems));
+
+            refreshList();
+
+            // Retrieve
+           // document.write(localStorage.foodItems);
 
   } else {
     // Sorry! No Web Storage support..
     document.write("Looks like you need SQL. Fuck!");
+  }
+}
+
+function refreshList() {
+  for(var i = 0, l = foodItems.length; i < l; i++){
+    var option = foodItems[i];
+    selectBox.options.add( new Option(option.foodName, option.foodCalories) );
+    //foodName:foodName, foodCalories:foodCalories
   }
 }
 
